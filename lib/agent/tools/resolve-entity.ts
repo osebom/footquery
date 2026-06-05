@@ -1,7 +1,6 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { executeReadonlySql } from "@/lib/db/execute-sql";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const CONFIDENCE_THRESHOLD = 0.6;
 const TRGM_THRESHOLD = 0.2;
@@ -180,37 +179,37 @@ async function fuzzySearchTeams(text: string): Promise<TeamCandidate[]> {
 async function exactPlayerMatch(
   text: string,
 ): Promise<{ player_id: number; player_name: string } | null> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("player_mapping")
-    .select("player_id, player_name")
-    .ilike("player_name", text)
-    .limit(1)
-    .maybeSingle();
+  const escaped = escape(text);
+  const result = await executeReadonlySql(`
+    SELECT player_id, player_name
+    FROM player_mapping
+    WHERE lower(player_name) = lower('${escaped}')
+    LIMIT 1
+  `);
 
-  if (error) {
-    throw new Error(`Player lookup failed: ${error.message}`);
+  if ("error" in result) {
+    throw new Error(`Player lookup failed: ${result.error}`);
   }
 
-  return data;
+  return (result.rows[0] as { player_id: number; player_name: string }) ?? null;
 }
 
 async function exactTeamMatch(
   text: string,
 ): Promise<{ team_id: number; name: string } | null> {
-  const supabase = createServerSupabaseClient();
-  const { data, error } = await supabase
-    .from("team_mapping")
-    .select("team_id, name")
-    .ilike("name", text)
-    .limit(1)
-    .maybeSingle();
+  const escaped = escape(text);
+  const result = await executeReadonlySql(`
+    SELECT team_id, name
+    FROM team_mapping
+    WHERE lower(name) = lower('${escaped}')
+    LIMIT 1
+  `);
 
-  if (error) {
-    throw new Error(`Team lookup failed: ${error.message}`);
+  if ("error" in result) {
+    throw new Error(`Team lookup failed: ${result.error}`);
   }
 
-  return data;
+  return (result.rows[0] as { team_id: number; name: string }) ?? null;
 }
 
 const resolveEntitySchema = z.object({

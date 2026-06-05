@@ -40,8 +40,10 @@ id, player_id, match_id, in_squad, started, subbed_on, subbed_off, minutes, goal
 ### player_seasonstats
 player_id, goals, assists, contributions, player_name, season_label.
 Use this FIRST for season totals like "how many goals/assists did X get this season",
-top-scorer leaderboards, and any "season-level" aggregate. Do not compute season
+league-wide top-scorer leaderboards, and any "season-level" aggregate. Do not compute season
 totals from vw_player_matchstats unless this table is missing the metric.
+IMPORTANT: this table has NO team_id column. For a single team's top scorer or any
+team-scoped leaderboard you MUST use player_matchstats (which has team_id) instead.
 
 ### match_results
 match_id, match_date, match_time_utc, round, home_id, away_id, home_goals, away_goals, result_string, isdraw, win_team, loss_team, season_label
