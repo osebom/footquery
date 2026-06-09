@@ -161,7 +161,7 @@ const Composer: FC = () => {
       >
         <ComposerPrimitive.Input
           placeholder="Ask about goals, streaks, records, clubs, players..."
-          className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none"
+          className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-base outline-none md:text-sm"
           rows={1}
           autoFocus
           aria-label="Message input"
