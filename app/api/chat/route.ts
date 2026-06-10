@@ -23,8 +23,42 @@ function rateLimitHeaders(snapshot: {
   };
 }
 
+type ResolvedEntity = {
+  name: string;
+  type: "player" | "team";
+  id: string | number;
+};
+
+// Append the @-picked entity ids to the user's turn as a short note, so the
+// agent can use them directly instead of calling resolve_entity.
+function applyResolvedEntities(
+  message: UIMessage,
+  entities: ResolvedEntity[],
+): void {
+  const valid = entities.filter(
+    (e) =>
+      e &&
+      (e.type === "player" || e.type === "team") &&
+      typeof e.name === "string" &&
+      (typeof e.id === "string" || typeof e.id === "number"),
+  );
+  if (valid.length === 0) return;
+
+  const note = valid
+    .map((e) => `${e.name} = ${e.type}_id ${e.id}`)
+    .join("; ");
+
+  message.parts = [
+    ...(message.parts ?? []),
+    {
+      type: "text",
+      text: `\n\n[Pre-resolved entities (already mapped from the user's @ mentions — use these IDs directly and do NOT call resolve_entity for them): ${note}]`,
+    },
+  ];
+}
+
 export async function POST(req: Request) {
-  let body: { messages?: UIMessage[] };
+  let body: { messages?: UIMessage[]; resolvedEntities?: ResolvedEntity[] };
   try {
     body = await req.json();
   } catch {
@@ -37,6 +71,10 @@ export async function POST(req: Request) {
       { error: "Expected a user message at the end of `messages`." },
       { status: 400 },
     );
+  }
+
+  if (Array.isArray(body.resolvedEntities) && body.resolvedEntities.length > 0) {
+    applyResolvedEntities(messages[messages.length - 1], body.resolvedEntities);
   }
 
   let limit;

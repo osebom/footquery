@@ -1,5 +1,9 @@
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import {
+  MentionPopover,
+  useMentionAutocomplete,
+} from "@/components/assistant-ui/mention-popover";
+import {
   Reasoning,
   ReasoningContent,
   ReasoningRoot,
@@ -41,7 +45,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { useRef, type FC } from "react";
 
 const FOOTQUERY_SUGGESTIONS = [
   "Who scored the most goals in 2024/25?",
@@ -153,18 +157,26 @@ const ThreadSuggestions: FC = () => {
 };
 
 const Composer: FC = () => {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMentionAutocomplete(inputRef);
+
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+      <MentionPopover {...mention.popover} />
       <div
         data-slot="aui_composer-shell"
         className="bg-background focus-within:border-ring/75 focus-within:ring-ring/20 flex w-full flex-col gap-2 rounded-(--composer-radius) border p-(--composer-padding) transition-shadow focus-within:ring-2"
       >
         <ComposerPrimitive.Input
-          placeholder="Ask about goals, streaks, records, clubs, players..."
+          ref={inputRef}
+          placeholder="Ask about goals, streaks, records, clubs, players... (type @ to mention)"
           className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-base outline-none md:text-sm"
           rows={1}
           autoFocus
           aria-label="Message input"
+          onChange={mention.inputHandlers.onChange}
+          onSelect={mention.inputHandlers.onSelect}
+          onKeyDown={mention.inputHandlers.onKeyDown}
         />
         <ComposerAction />
       </div>

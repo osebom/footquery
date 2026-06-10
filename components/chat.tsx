@@ -7,7 +7,48 @@ import {
 } from "@assistant-ui/react-ai-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Thread } from "@/components/assistant-ui/thread";
+import { clearMentions, collectMentions } from "@/components/assistant-ui/mention-popover";
 import { cn } from "@/lib/utils";
+
+type UIMessageLike = {
+  role?: string;
+  parts?: { type?: string; text?: string }[];
+};
+
+function lastUserText(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const messages = (body as { messages?: UIMessageLike[] }).messages;
+  if (!Array.isArray(messages)) return "";
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role !== "user") continue;
+    return (messages[i].parts ?? [])
+      .filter((part) => part.type === "text" && typeof part.text === "string")
+      .map((part) => part.text)
+      .join("");
+  }
+  return "";
+}
+
+// Attach the ids of any @-picked entities still present in the outgoing
+// message so the server can hand them to the agent (skipping resolve_entity).
+// Done in a fetch wrapper because the request body is already fully serialized
+// here, regardless of how assistant-ui assembled it.
+const mentionAwareFetch: typeof fetch = async (input, init) => {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const parsed = JSON.parse(init.body) as Record<string, unknown>;
+      const resolved = collectMentions(lastUserText(parsed));
+      clearMentions();
+      if (resolved.length > 0) {
+        parsed.resolvedEntities = resolved;
+        init = { ...init, body: JSON.stringify(parsed) };
+      }
+    } catch {
+      // Not JSON we understand — send it through unchanged.
+    }
+  }
+  return fetch(input, init);
+};
 
 type Usage = {
   remaining: number;
@@ -50,7 +91,7 @@ export function Chat() {
 
   const limitReached = usage !== null && usage.remaining <= 0;
   const transport = useMemo(
-    () => new AssistantChatTransport({ api: "/api/chat" }),
+    () => new AssistantChatTransport({ api: "/api/chat", fetch: mentionAwareFetch }),
     [],
   );
   const runtime = useChatRuntime({
